@@ -1,0 +1,67 @@
+name: 🐞 Bug report
+description: Something isn't working the way it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to file a bug! Please fill out the sections below.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, and what you expected instead.
+      placeholder: When I hover over Safari in the Dock, no preview appears…
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Launch DockPeek
+        2. Hover over <app> in the Dock
+        3. …
+    validations:
+      required: true
+  - type: dropdown
+    id: dock-position
+    attributes:
+      label: Dock position
+      options: [Bottom, Left, Right, Not sure]
+    validations:
+      required: false
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "e.g. 14.5 (Sonoma) / 15.0 (Sequoia)"
+    validations:
+      required: true
+  - type: input
+    id: mac-model
+    attributes:
+      label: Mac model / chip
+      placeholder: "e.g. MacBook Pro M3, or Intel"
+    validations:
+      required: false
+  - type: input
+    id: version
+    attributes:
+      label: DockPeek version
+      description: See the release you downloaded, or the commit you built from.
+      placeholder: "v0.1.0"
+    validations:
+      required: true
+  - type: checkboxes
+    id: permissions
+    attributes:
+      label: Permissions granted
+      options:
+        - label: Accessibility
+        - label: Screen Recording
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console logs (optional)
+      description: "Console.app → filter for `DockPeek`. Paste anything relevant."
+      render: text
