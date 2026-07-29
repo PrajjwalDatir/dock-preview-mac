@@ -1,0 +1,19 @@
+# SwiftPM / build output
+.build/
+.swiftpm/
+Package.resolved
+
+# Generated app bundle, icon intermediates, and distributables
+build/
+dist/
+*.app
+
+# macOS cruft
+.DS_Store
+
+# Signing material / secrets — never commit these
+*.p12
+*.cer
+*.p8
+*.mobileprovision
+ExportOptions.plist
