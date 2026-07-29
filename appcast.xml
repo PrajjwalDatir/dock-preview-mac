@@ -4,11 +4,11 @@
         <title>dock-preview</title>
         <item>
             <title>0.1.1</title>
-            <pubDate>Wed, 29 Jul 2026 19:39:36 +0530</pubDate>
+            <pubDate>Wed, 29 Jul 2026 20:19:48 +0530</pubDate>
             <sparkle:version>2</sparkle:version>
             <sparkle:shortVersionString>0.1.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/PrajjwalDatir/dock-preview-mac/releases/download/v0.1.1/dock-preview-0.1.1.zip" length="1517812" type="application/octet-stream" sparkle:edSignature="8bqtGdJDxANfY2lwQWlHBmQe6I4fSdwwu1uLehQbpT6dlEH1ErfKVkrkX3O6ubw2QFw8BltenIA9bAsQcm4QAQ=="/>
+            <enclosure url="https://github.com/PrajjwalDatir/dock-preview-mac/releases/download/v0.1.1/dock-preview-0.1.1.zip" length="1517822" type="application/octet-stream" sparkle:edSignature="z2yEhgRsDovxWZLqx6ot46eLX7HpPQWp+BQ6jjj/LmclvcH4gnup3leCv4zBaIfp4FXHhPHPg/K2N9q3lh9wAQ=="/>
         </item>
     </channel>
 </rss>
