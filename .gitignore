@@ -8,6 +8,14 @@ build/
 dist/
 *.app
 
+# Vendored Sparkle (fetched on demand via bin/fetch-sparkle.sh)
+Vendor/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/test_output/
+
 # macOS cruft
 .DS_Store
 
