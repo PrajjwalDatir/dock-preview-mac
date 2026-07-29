@@ -13,8 +13,9 @@ Hover any running app in the macOS Dock and get a live preview of its windows �
 the way the Windows taskbar does it. Runs as a quiet menu-bar app; no Dock
 injection, no disabling SIP, no system-wide hacks.
 
-> Add a short screen recording here (`docs/demo.gif`) — hover across a couple of
-> apps with several windows to show the previews popping out of the Dock.
+<p align="center">
+  <img src="screenshots/PreviewClaude.png" width="620" alt="A live window preview popping out of a Dock icon, with the app name and a notch pointing at the icon">
+</p>
 
 ## Install
 
@@ -87,12 +88,20 @@ export DEVELOPER_ID="Developer ID Application: Your Name (TEAMID)"
 - **Launch at login** — register as a login item (`SMAppService`).
 - **Per-app list** — turn previews off for specific apps.
 
+<p align="center">
+  <img src="screenshots/preferences.png" width="380" alt="DockPeek Preferences window: hover delay, thumbnail size, animation, launch at login, and a per-app on/off list">
+</p>
+
 ## Interaction
 
 - **Hover** a Dock app → preview pops out of the icon (bottom, left, or right Dock).
 - **Click** a thumbnail → that window is raised and its app activated.
 - **Esc** → dismiss.
-- Menu bar → **Pause / Resume**, **Preferences…**, **Quit**.
+- Menu bar → **Pause / Resume**, **Preferences…**, **Launch at Login**, **Check for Updates…**, **Quit**.
+
+<p align="center">
+  <img src="screenshots/widget.png" width="320" alt="DockPeek menu-bar menu with Pause Previews, Preferences, Launch at Login, Check for Updates, and Quit">
+</p>
 
 ## Accessibility
 
