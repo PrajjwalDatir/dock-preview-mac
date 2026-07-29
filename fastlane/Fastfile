@@ -24,8 +24,10 @@ def app_version
 end
 
 def sparkle_tool(name)
+  vendored = "#{ROOT}/Vendor/bin/#{name}"
+  return vendored if File.executable?(vendored)
   path = `find #{ROOT.shellescape}/.build -name #{name.shellescape} -type f 2>/dev/null | head -1`.strip
-  UI.user_error!("#{name} not found. Run `swift build -c release` first so Sparkle's tools are fetched.") if path.empty?
+  UI.user_error!("#{name} not found. Run `./bin/fetch-sparkle.sh` first.") if path.empty?
   path
 end
 
@@ -44,12 +46,16 @@ platform :mac do
     UI.important("Paste the printed public key into Resources/Info.plist → SUPublicEDKey")
   end
 
-  desc "Regenerate + EdDSA-sign appcast.xml from the archives in dist/"
+  desc "Regenerate + EdDSA-sign appcast.xml from the release .zip"
   lane :appcast do
     version = app_version
     prefix  = "https://github.com/#{REPO}/releases/download/v#{version}/"
-    rootsh("#{sparkle_tool('generate_appcast').shellescape} --download-url-prefix #{prefix.shellescape} dist")
-    rootsh("mv -f dist/appcast.xml appcast.xml")
+    # generate_appcast rejects a folder holding both a .zip and .dmg for one version,
+    # so stage only the .zip — Sparkle installs updates from the zip; the dmg is a
+    # manual-download convenience on the Releases page.
+    rootsh("rm -rf dist/_appcast && mkdir -p dist/_appcast && cp dist/dock-preview-#{version}.zip dist/_appcast/")
+    rootsh("#{sparkle_tool('generate_appcast').shellescape} --download-url-prefix #{prefix.shellescape} dist/_appcast")
+    rootsh("mv -f dist/_appcast/appcast.xml appcast.xml && rm -rf dist/_appcast")
     UI.success("appcast.xml updated for v#{version}")
   end
 
