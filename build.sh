@@ -16,6 +16,9 @@ APP_NAME="dock-preview"        # shipped bundle / executable name
 BUILD_DIR=".build/${CONFIG}"
 APP="${APP_NAME}.app"
 
+echo "▶︎ Ensuring Sparkle is vendored…"
+./bin/fetch-sparkle.sh
+
 echo "▶︎ Compiling (${CONFIG})…"
 swift build -c "${CONFIG}"
 
@@ -28,6 +31,17 @@ cp "${BUILD_DIR}/${TARGET_BIN}" "${APP}/Contents/MacOS/${APP_NAME}"
 cp "Resources/Info.plist" "${APP}/Contents/Info.plist"
 [ -f "Resources/AppIcon.icns" ] && cp "Resources/AppIcon.icns" "${APP}/Contents/Resources/AppIcon.icns"
 
+# Embed Sparkle.framework (auto-update). Copy it straight from the vendored
+# xcframework and make sure the executable can find it via an added rpath.
+SPARKLE_FW="Vendor/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"
+if [ -d "${SPARKLE_FW}" ]; then
+    echo "▶︎ Embedding Sparkle.framework…"
+    mkdir -p "${APP}/Contents/Frameworks"
+    cp -R "${SPARKLE_FW}" "${APP}/Contents/Frameworks/"
+    install_name_tool -add_rpath "@executable_path/../Frameworks" \
+        "${APP}/Contents/MacOS/${APP_NAME}" 2>/dev/null || true
+fi
+
 # Prefer a stable Developer ID identity so macOS privacy grants (Accessibility,
 # Screen Recording) survive rebuilds — ad-hoc changes the cdhash every build, which
 # silently invalidates the permission and makes the app ask again. Override with
@@ -38,12 +52,31 @@ if [ -z "${SIGN_ID:-}" ]; then
 fi
 SIGN_ID="${SIGN_ID:--}"
 
+FW_DST="${APP}/Contents/Frameworks/Sparkle.framework"
+
 if [ "${SIGN_ID}" = "-" ]; then
     echo "▶︎ Ad-hoc code signing (grants won't persist across rebuilds)…"
     codesign --force --deep --sign - "${APP}"
 else
     echo "▶︎ Code signing with: ${SIGN_ID}"
-    codesign --force --deep --options runtime --sign "${SIGN_ID}" "${APP}"
+    # Sign Sparkle's nested helpers inner-to-outer with hardened runtime + secure
+    # timestamp so the whole bundle is notarizable. Same team as the app, so library
+    # validation is satisfied without disabling it.
+    if [ -d "${FW_DST}" ]; then
+        V="${FW_DST}/Versions/B"
+        for item in \
+            "${V}/XPCServices/org.sparkle-project.Downloader.xpc" \
+            "${V}/XPCServices/org.sparkle-project.InstallerLauncher.xpc" \
+            "${V}/XPCServices/Downloader.xpc" \
+            "${V}/XPCServices/Installer.xpc" \
+            "${V}/Autoupdate" \
+            "${V}/Updater.app" ; do
+            [ -e "${item}" ] && codesign --force --options runtime --timestamp \
+                --sign "${SIGN_ID}" "${item}"
+        done
+        codesign --force --options runtime --timestamp --sign "${SIGN_ID}" "${FW_DST}"
+    fi
+    codesign --force --options runtime --timestamp --sign "${SIGN_ID}" "${APP}"
 fi
 
 # Make sure a freshly built local app isn't Gatekeeper-quarantined.

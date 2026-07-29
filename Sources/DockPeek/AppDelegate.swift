@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupStatusItem()
         wireObserver()
         startPermissionWatch()
+        _ = UpdaterController.shared   // start Sparkle's background update checks
 
         if PermissionManager.allGranted {
             startObserving()
@@ -144,6 +145,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         login.target = self
         login.state = LaunchAtLogin.isEnabled ? .on : .off
         menu.addItem(login)
+
+        let updates = NSMenuItem(title: "Check for Updates…",
+                                 action: #selector(UpdaterController.checkForUpdates),
+                                 keyEquivalent: "")
+        updates.target = UpdaterController.shared
+        updates.isEnabled = UpdaterController.shared.canCheckForUpdates
+        menu.addItem(updates)
 
         menu.addItem(.separator())
         let quit = NSMenuItem(title: "Quit DockPeek", action: #selector(quit), keyEquivalent: "q")

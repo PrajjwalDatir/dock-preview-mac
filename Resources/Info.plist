@@ -15,9 +15,9 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
+    <string>0.1.1</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>2</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <!-- Background/menu-bar app: no Dock icon, no main window. -->
@@ -28,5 +28,16 @@
     <!-- Shown by the OS if/where a usage string is surfaced. -->
     <key>NSAccessibilityUsageDescription</key>
     <string>DockPeek reads which Dock icon your cursor is over so it can show a preview of that app's windows.</string>
+    <!-- Sparkle auto-update. SUPublicEDKey is filled in by `fastlane keys` /
+         `bin/generate_keys`; updates are only installed if their EdDSA signature
+         matches this key. -->
+    <key>SUFeedURL</key>
+    <string>https://raw.githubusercontent.com/PrajjwalDatir/dock-preview-mac/main/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>6qjny/KygyNFyZnhi1dqK+uwNJBJ6Um3mWhDAalwiqc=</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
+    <key>SUScheduledCheckInterval</key>
+    <integer>86400</integer>
 </dict>
 </plist>
