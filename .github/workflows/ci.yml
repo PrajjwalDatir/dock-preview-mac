@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build (macOS)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Build (debug)
+        run: swift build
+
+      - name: Build (release)
+        run: swift build -c release
+
+      - name: Assemble app bundle
+        # No Developer ID on the runner, so build.sh falls back to an ad-hoc
+        # signature — fine for verifying the bundle assembles correctly.
+        run: ./build.sh
+
+      - name: Verify bundle
+        run: |
+          test -x "dock-preview.app/Contents/MacOS/dock-preview"
+          codesign --verify --deep --strict --verbose=2 dock-preview.app
