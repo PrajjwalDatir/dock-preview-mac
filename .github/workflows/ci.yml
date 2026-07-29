@@ -20,6 +20,9 @@ jobs:
       - name: Swift version
         run: swift --version
 
+      - name: Vendor Sparkle
+        run: ./bin/fetch-sparkle.sh
+
       - name: Build (debug)
         run: swift build
 

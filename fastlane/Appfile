@@ -1,0 +1,5 @@
+# DockPeek ships via Developer ID + notarization (not the App Store), so there is no
+# App Store Connect app record. This is kept only for Apple Developer team context.
+for_platform :mac do
+  team_id "2HA88J9PL3"
+end

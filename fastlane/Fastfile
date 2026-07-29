@@ -1,0 +1,86 @@
+# DockPeek ships OUTSIDE the Mac App Store.
+#
+# Its core features — reading the Dock via the Accessibility API and capturing other
+# apps' windows with ScreenCaptureKit — are incompatible with the App Sandbox that
+# the App Store / TestFlight require, so gym/pilot/deliver don't apply. These lanes
+# instead wrap the real distribution pipeline: SwiftPM build → Developer ID sign +
+# embed Sparkle → notarize + staple → GitHub Release → signed Sparkle appcast.
+
+require "shellwords"
+
+ROOT = File.expand_path("..", __dir__)
+
+DEVELOPER_ID   = ENV["DEVELOPER_ID"] || "Developer ID Application: Prajjwal Datir (2HA88J9PL3)"
+NOTARY_PROFILE = ENV["NOTARY_PROFILE"] || "DockPeek"
+APP            = "dock-preview.app"
+REPO           = "PrajjwalDatir/dock-preview-mac"
+
+def rootsh(cmd)
+  sh("cd #{ROOT.shellescape} && #{cmd}")
+end
+
+def app_version
+  `/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' #{ROOT.shellescape}/Resources/Info.plist`.strip
+end
+
+def sparkle_tool(name)
+  path = `find #{ROOT.shellescape}/.build -name #{name.shellescape} -type f 2>/dev/null | head -1`.strip
+  UI.user_error!("#{name} not found. Run `swift build -c release` first so Sparkle's tools are fetched.") if path.empty?
+  path
+end
+
+default_platform(:mac)
+
+platform :mac do
+  desc "Compile, assemble, Developer-ID sign, and embed Sparkle into #{APP}"
+  lane :build do
+    rootsh("SIGN_ID=#{DEVELOPER_ID.shellescape} ./build.sh")
+  end
+
+  desc "One-time: generate the Sparkle EdDSA keys and print the public key for Info.plist"
+  lane :keys do
+    rootsh("swift build -c release")
+    rootsh(sparkle_tool("generate_keys").shellescape)
+    UI.important("Paste the printed public key into Resources/Info.plist → SUPublicEDKey")
+  end
+
+  desc "Regenerate + EdDSA-sign appcast.xml from the archives in dist/"
+  lane :appcast do
+    version = app_version
+    prefix  = "https://github.com/#{REPO}/releases/download/v#{version}/"
+    rootsh("#{sparkle_tool('generate_appcast').shellescape} --download-url-prefix #{prefix.shellescape} dist")
+    rootsh("mv -f dist/appcast.xml appcast.xml")
+    UI.success("appcast.xml updated for v#{version}")
+  end
+
+  desc "Full release: build → notarize app + dmg → GitHub Release → publish appcast"
+  lane :release do
+    version = app_version
+    UI.message("── Releasing dock-preview v#{version} ──")
+
+    build
+    rootsh("./package.sh")
+
+    zip = "dist/dock-preview-#{version}.zip"
+    dmg = "dist/dock-preview-#{version}.dmg"
+
+    # Notarize the app (submitted as a zip) and staple the ticket into the app.
+    rootsh("xcrun notarytool submit #{zip} --keychain-profile #{NOTARY_PROFILE.shellescape} --wait")
+    rootsh("xcrun stapler staple #{APP}")
+    rootsh("ditto -c -k --sequesterRsrc --keepParent #{APP} #{zip}")   # re-zip the stapled app
+
+    # Notarize + staple the dmg too.
+    rootsh("xcrun notarytool submit #{dmg} --keychain-profile #{NOTARY_PROFILE.shellescape} --wait")
+    rootsh("xcrun stapler staple #{dmg}")
+
+    # Publish the GitHub release (assets first, so the appcast's enclosure URLs resolve).
+    rootsh("gh release create v#{version} #{dmg} #{zip} --title #{"DockPeek v#{version}".shellescape} --generate-notes " \
+           "|| gh release upload v#{version} #{dmg} #{zip} --clobber")
+
+    appcast
+
+    # Commit + push appcast.xml so the SUFeedURL (raw main branch) serves the update.
+    rootsh("git add appcast.xml && git commit -m #{"Publish Sparkle appcast for v#{version}".shellescape} && git push origin main")
+    UI.success("Released dock-preview v#{version} 🎉  Sparkle clients will see it within a day (or via Check for Updates…).")
+  end
+end

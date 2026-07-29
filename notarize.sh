@@ -1,15 +1,17 @@
 #!/bin/bash
-# Sign with Developer ID + notarize dock-preview.app so other Macs open it without
-# Gatekeeper warnings. Requires an Apple Developer account and a stored notary
-# profile. This is the D1 distribution step — it CANNOT run with the ad-hoc signature
-# ./build.sh produces; you need real credentials.
+# Notarize dock-preview.app for distribution outside the App Store.
 #
-# One-time setup:
+# build.sh already produces a fully Developer-ID-signed, hardened-runtime,
+# timestamped bundle (including the embedded, individually-signed Sparkle.framework),
+# so this script does NOT re-sign — it just zips, submits to Apple, and staples.
+#
+# One-time setup (stores an app-specific password in the keychain):
 #   xcrun notarytool store-credentials "DockPeek" \
 #     --apple-id "you@example.com" --team-id "TEAMID" --password "app-specific-pw"
 #
-# Set your identity here (from `security find-identity -v -p codesigning`):
-#   DEVELOPER_ID="Developer ID Application: Your Name (TEAMID)"
+# Then:
+#   export DEVELOPER_ID="Developer ID Application: Your Name (TEAMID)"
+#   ./notarize.sh
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -19,19 +21,16 @@ APP="dock-preview.app"
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Resources/Info.plist)"
 ZIP="dist/dock-preview-${VERSION}.zip"
 
-./build.sh   # produces the bundle (ad-hoc); re-sign below with Developer ID
-
-echo "▶︎ Signing with Developer ID (hardened runtime)…"
-codesign --force --deep --options runtime --timestamp \
-    --sign "${DEVELOPER_ID}" "${APP}"
+echo "▶︎ Building signed bundle…"
+SIGN_ID="${DEVELOPER_ID}" ./build.sh
 
 mkdir -p dist
 ditto -c -k --sequesterRsrc --keepParent "${APP}" "${ZIP}"
 
-echo "▶︎ Submitting to Apple notary service (this can take a few minutes)…"
+echo "▶︎ Submitting to Apple notary service (a few minutes)…"
 xcrun notarytool submit "${ZIP}" --keychain-profile "${PROFILE}" --wait
 
-echo "▶︎ Stapling ticket…"
+echo "▶︎ Stapling ticket into the app…"
 xcrun stapler staple "${APP}"
 ditto -c -k --sequesterRsrc --keepParent "${APP}" "${ZIP}"
 
