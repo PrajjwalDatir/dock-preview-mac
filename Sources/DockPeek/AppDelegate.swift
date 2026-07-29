@@ -71,7 +71,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func startPermissionWatch() {
         let t = Timer(timeInterval: 3.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.checkPermissions() }
+            // Timer fires on the main run loop; hop synchronously onto the main actor.
+            MainActor.assumeIsolated { self?.checkPermissions() }
         }
         RunLoop.main.add(t, forMode: .common)
         permissionWatch = t

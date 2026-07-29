@@ -37,7 +37,8 @@ final class OnboardingController: NSObject, NSWindowDelegate {
         // Re-check permissions periodically so the rows update live as the user
         // flips the switches in System Settings.
         let t = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.refreshStatus() }
+            // Timer fires on the main run loop; hop synchronously onto the main actor.
+            MainActor.assumeIsolated { self?.refreshStatus() }
         }
         RunLoop.main.add(t, forMode: .common)
         refreshTimer = t
