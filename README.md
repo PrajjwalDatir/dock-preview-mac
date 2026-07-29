@@ -20,8 +20,8 @@ injection, no disabling SIP, no system-wide hacks.
 
 1. Download the latest `.dmg` from the [**Releases**](https://github.com/PrajjwalDatir/dock-preview-mac/releases/latest) page.
 2. Open it and drag **dock-preview** to Applications.
-3. Launch it. If macOS says it "cannot be verified", **right-click the app → Open**
-   once (releases are Developer-ID signed; notarization is on the roadmap).
+3. Launch it — the app is signed and **notarized by Apple**, so it opens with no
+   Gatekeeper warning.
 4. Grant **Accessibility** and **Screen Recording** in the onboarding window, then
    click **Relaunch**.
 
