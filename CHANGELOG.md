@@ -26,4 +26,4 @@ First public release. 🎉
   (`.zip` + `.dmg`), `notarize.sh` (Developer ID + notarization), and a generated
   app icon (`tools/make_icon.swift`).
 
-[0.1.0]: https://github.com/PrajjwalDatir/DockPeek/releases/tag/v0.1.0
+[0.1.0]: https://github.com/PrajjwalDatir/dock-preview-mac/releases/tag/v0.1.0

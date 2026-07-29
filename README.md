@@ -1,7 +1,11 @@
-# DockPeek — `dock-preview.app`
+<p align="center">
+  <img src="docs/icon.png" width="120" height="120" alt="DockPeek app icon">
+</p>
 
-[![CI](https://github.com/PrajjwalDatir/DockPeek/actions/workflows/ci.yml/badge.svg)](https://github.com/PrajjwalDatir/DockPeek/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/PrajjwalDatir/DockPeek?sort=semver)](https://github.com/PrajjwalDatir/DockPeek/releases/latest)
+<h1 align="center">DockPeek — <code>dock-preview.app</code></h1>
+
+[![CI](https://github.com/PrajjwalDatir/dock-preview-mac/actions/workflows/ci.yml/badge.svg)](https://github.com/PrajjwalDatir/dock-preview-mac/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/PrajjwalDatir/dock-preview-mac?sort=semver)](https://github.com/PrajjwalDatir/dock-preview-mac/releases/latest)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/macOS-14%2B-black?logo=apple)](#requirements)
 
@@ -14,7 +18,7 @@ injection, no disabling SIP, no system-wide hacks.
 
 ## Install
 
-1. Download the latest `.dmg` from the [**Releases**](https://github.com/PrajjwalDatir/DockPeek/releases/latest) page.
+1. Download the latest `.dmg` from the [**Releases**](https://github.com/PrajjwalDatir/dock-preview-mac/releases/latest) page.
 2. Open it and drag **dock-preview** to Applications.
 3. Launch it. If macOS says it "cannot be verified", **right-click the app → Open**
    once (releases are Developer-ID signed; notarization is on the roadmap).

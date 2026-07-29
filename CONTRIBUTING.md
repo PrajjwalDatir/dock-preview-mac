@@ -13,8 +13,8 @@ Thanks for your interest in improving DockPeek! 🎉
 Requirements: macOS 14+ and a recent Swift toolchain (Xcode 15+).
 
 ```bash
-git clone https://github.com/PrajjwalDatir/DockPeek.git
-cd DockPeek
+git clone https://github.com/PrajjwalDatir/dock-preview-mac.git
+cd dock-preview-mac
 swift build          # debug build
 ./build.sh           # assemble + sign dock-preview.app
 open ./dock-preview.app
