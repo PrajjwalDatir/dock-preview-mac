@@ -13,14 +13,15 @@ cd "$(dirname "$0")"
 CONFIG="release"
 TARGET_BIN="DockPeek"          # SwiftPM product name
 APP_NAME="dock-preview"        # shipped bundle / executable name
-BUILD_DIR=".build/${CONFIG}"
+# Universal (arm64 + x86_64) products land under .build/apple/Products/Release.
+BUILD_DIR=".build/apple/Products/Release"
 APP="${APP_NAME}.app"
 
 echo "▶︎ Ensuring Sparkle is vendored…"
 ./bin/fetch-sparkle.sh
 
-echo "▶︎ Compiling (${CONFIG})…"
-swift build -c "${CONFIG}"
+echo "▶︎ Compiling universal (arm64 + x86_64, ${CONFIG})…"
+swift build -c "${CONFIG}" --arch arm64 --arch x86_64
 
 echo "▶︎ Assembling ${APP}…"
 rm -rf "${APP}"
