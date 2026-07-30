@@ -115,8 +115,8 @@ final class PreviewController {
             cardW: cardW,
             thumbHeight: thumbHeight,
             onRaise: { [weak self] thumb in self?.raise(thumb) },
-            onClose: { [weak self] thumb in self?.performWindowAction(thumb: thumb, actionAttribute: kAXCloseButtonAttribute) },
-            onMinimize: { [weak self] thumb in self?.performWindowAction(thumb: thumb, actionAttribute: kAXMinimizeButtonAttribute) }
+            onClose: { [weak self] thumb in self?.performWindowAction(thumb: thumb, actionAttribute: kAXCloseButtonAttribute as CFString) },
+            onMinimize: { [weak self] thumb in self?.performWindowAction(thumb: thumb, actionAttribute: kAXMinimizeButtonAttribute as CFString) }
         ))
 
         hostView.frame = NSRect(
@@ -298,7 +298,8 @@ final class PreviewController {
             if let axTitle = titleRef as? String, axTitle == thumb.title {
                 var buttonRef: CFTypeRef?
                 if AXUIElementCopyAttributeValue(axWindow, actionAttribute, &buttonRef) == .success,
-                   let button = buttonRef as? AXUIElement {
+                   let buttonVal = buttonRef, CFGetTypeID(buttonVal) == AXUIElementGetTypeID() {
+                    let button = buttonVal as! AXUIElement
                     AXUIElementPerformAction(button, kAXPressAction as CFString)
                 }
                 return
@@ -309,7 +310,8 @@ final class PreviewController {
         if let first = axWindows.first {
             var buttonRef: CFTypeRef?
             if AXUIElementCopyAttributeValue(first, actionAttribute, &buttonRef) == .success,
-               let button = buttonRef as? AXUIElement {
+               let buttonVal = buttonRef, CFGetTypeID(buttonVal) == AXUIElementGetTypeID() {
+                let button = buttonVal as! AXUIElement
                 AXUIElementPerformAction(button, kAXPressAction as CFString)
             }
         }
@@ -447,7 +449,7 @@ struct ThumbCard: View {
                 onRaise()
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityRole(.button)
+            .accessibilityAddTraits(.isButton)
             .accessibilityLabel("\(thumb.title), window of \(appName). Click to bring to front.")
 
             Text(thumb.title)
