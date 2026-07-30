@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import AppKit
 import ApplicationServices
+import SwiftUI
 
 /// Owns the floating preview panel: builds thumbnail cards, sizes and positions the
 /// panel relative to the hovered Dock icon (bottom / left / right Dock), animates it
@@ -90,7 +91,10 @@ final class PreviewController {
 
         let cardW = max(160, Settings.shared.thumbWidth)
         let count = thumbs.count
-        let cardsWidth = CGFloat(count) * cardW + CGFloat(count - 1) * spacing
+
+        // Cap width to max 4 items, scroll the rest
+        let visibleCount = min(count, 4)
+        let cardsWidth = CGFloat(visibleCount) * cardW + CGFloat(visibleCount - 1) * spacing
         let cardBlockH = thumbHeight + 4 + labelHeight
         let bodyWidth = max(cardsWidth, 200) + padding * 2
         let bodyHeight = padding + headerHeight + 8 + cardBlockH + padding
@@ -105,26 +109,23 @@ final class PreviewController {
             y: onBottom ? notch : 0
         )
 
-        // Header: app name + window count.
-        let header = NSTextField(labelWithString:
-            count == 1 ? hover.title : "\(hover.title)  ·  \(count) windows")
-        header.font = .systemFont(ofSize: 12, weight: .semibold)
-        header.textColor = .labelColor
-        header.lineBreakMode = .byTruncatingTail
-        header.frame = NSRect(x: bodyOrigin.x + padding,
-                              y: bodyOrigin.y + bodyHeight - padding - headerHeight,
-                              width: bodyWidth - padding * 2, height: headerHeight)
-        content.addSubview(header)
+        let hostView = NSHostingView(rootView: ThumbsView(
+            hover: hover,
+            thumbs: thumbs,
+            cardW: cardW,
+            thumbHeight: thumbHeight,
+            onRaise: { [weak self] thumb in self?.raise(thumb) },
+            onClose: { [weak self] thumb in self?.performWindowAction(thumb: thumb, actionAttribute: kAXCloseButtonAttribute as CFString) },
+            onMinimize: { [weak self] thumb in self?.performWindowAction(thumb: thumb, actionAttribute: kAXMinimizeButtonAttribute as CFString) }
+        ))
 
-        // Cards row.
-        var x = bodyOrigin.x + padding
-        let rowY = bodyOrigin.y + padding
-        for thumb in thumbs {
-            let card = makeCard(thumb, appName: hover.title, width: cardW,
-                                origin: CGPoint(x: x, y: rowY))
-            content.addSubview(card)
-            x += cardW + spacing
-        }
+        hostView.frame = NSRect(
+            x: bodyOrigin.x,
+            y: bodyOrigin.y,
+            width: bodyWidth,
+            height: bodyHeight
+        )
+        content.addSubview(hostView)
 
         // Position the whole panel on screen.
         let size = NSSize(width: panelWidth, height: panelHeight)
@@ -152,38 +153,6 @@ final class PreviewController {
         } else {
             panel.alphaValue = 1
         }
-    }
-
-    private func makeCard(_ thumb: WindowThumbnail, appName: String,
-                          width: CGFloat, origin: CGPoint) -> NSView {
-        let cardH = thumbHeight + 4 + labelHeight
-        let card = NSView(frame: NSRect(origin: origin, size: NSSize(width: width, height: cardH)))
-
-        let label = NSTextField(labelWithString: thumb.title)
-        label.font = .systemFont(ofSize: 11, weight: .medium)
-        label.textColor = .secondaryLabelColor
-        label.alignment = .center
-        label.lineBreakMode = .byTruncatingTail
-        label.frame = NSRect(x: 0, y: 0, width: width, height: labelHeight)
-        card.addSubview(label)
-
-        let imageView = ClickableImageView(frame:
-            NSRect(x: 0, y: labelHeight + 4, width: width, height: thumbHeight))
-        imageView.image = thumb.image
-        imageView.imageScaling = .scaleProportionallyUpOrDown
-        imageView.wantsLayer = true
-        imageView.layer?.cornerRadius = 6
-        imageView.layer?.masksToBounds = true
-        imageView.layer?.borderWidth = 1
-        imageView.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.5).cgColor
-        imageView.onClick = { [weak self] in self?.raise(thumb) }
-
-        // VoiceOver.
-        imageView.setAccessibilityElement(true)
-        imageView.setAccessibilityRole(.button)
-        imageView.setAccessibilityLabel("\(thumb.title), window of \(appName). Click to bring to front.")
-        card.addSubview(imageView)
-        return card
     }
 
     private func animateIn() {
@@ -308,6 +277,45 @@ final class PreviewController {
             AXUIElementPerformAction(first, kAXRaiseAction as CFString)
         }
     }
+
+    // MARK: System Actions (Close / Minimize)
+
+    private func performWindowAction(thumb: WindowThumbnail, actionAttribute: CFString) {
+        hide()
+        onDismiss?()
+        guard let info = (CGWindowListCopyWindowInfo([.optionIncludingWindow], thumb.id)
+                            as? [[String: Any]])?.first,
+              let ownerPID = info[kCGWindowOwnerPID as String] as? pid_t else { return }
+
+        let appElement = AXUIElementCreateApplication(ownerPID)
+        var windowsRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef) == .success,
+              let axWindows = windowsRef as? [AXUIElement] else { return }
+
+        for axWindow in axWindows {
+            var titleRef: CFTypeRef?
+            AXUIElementCopyAttributeValue(axWindow, kAXTitleAttribute as CFString, &titleRef)
+            if let axTitle = titleRef as? String, axTitle == thumb.title {
+                var buttonRef: CFTypeRef?
+                if AXUIElementCopyAttributeValue(axWindow, actionAttribute, &buttonRef) == .success,
+                   let buttonVal = buttonRef, CFGetTypeID(buttonVal) == AXUIElementGetTypeID() {
+                    let button = buttonVal as! AXUIElement
+                    AXUIElementPerformAction(button, kAXPressAction as CFString)
+                }
+                return
+            }
+        }
+
+        // Fallback to first if not matched by title
+        if let first = axWindows.first {
+            var buttonRef: CFTypeRef?
+            if AXUIElementCopyAttributeValue(first, actionAttribute, &buttonRef) == .success,
+               let buttonVal = buttonRef, CFGetTypeID(buttonVal) == AXUIElementGetTypeID() {
+                let button = buttonVal as! AXUIElement
+                AXUIElementPerformAction(button, kAXPressAction as CFString)
+            }
+        }
+    }
 }
 
 /// Non-activating panel that never becomes key/main, so it never steals focus.
@@ -339,4 +347,117 @@ final class TrackingView: NSView {
 final class ClickableImageView: NSImageView {
     var onClick: (() -> Void)?
     override func mouseDown(with event: NSEvent) { onClick?() }
+}
+
+// MARK: - SwiftUI Views
+
+struct ThumbsView: View {
+    let hover: DockItemHover
+    let thumbs: [WindowThumbnail]
+    let cardW: CGFloat
+    let thumbHeight: CGFloat
+    let onRaise: (WindowThumbnail) -> Void
+    let onClose: (WindowThumbnail) -> Void
+    let onMinimize: (WindowThumbnail) -> Void
+
+    var body: some View {
+        VStack(spacing: 8) {
+            // Header
+            Text(thumbs.count == 1 ? hover.title : "\(hover.title)  ·  \(thumbs.count) windows")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.primary)
+                .lineLimit(1)
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+
+            // Cards Row
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(thumbs, id: \.id) { thumb in
+                        ThumbCard(
+                            thumb: thumb,
+                            appName: hover.title,
+                            width: cardW,
+                            thumbHeight: thumbHeight,
+                            onRaise: { onRaise(thumb) },
+                            onClose: { onClose(thumb) },
+                            onMinimize: { onMinimize(thumb) }
+                        )
+                    }
+                }
+                .padding(.horizontal, 12)
+            }
+            .padding(.bottom, 12)
+        }
+    }
+}
+
+struct ThumbCard: View {
+    let thumb: WindowThumbnail
+    let appName: String
+    let width: CGFloat
+    let thumbHeight: CGFloat
+    let onRaise: () -> Void
+    let onClose: () -> Void
+    let onMinimize: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        VStack(spacing: 4) {
+            ZStack {
+                Image(nsImage: thumb.image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: width, height: thumbHeight)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.secondary.opacity(0.5), lineWidth: 1)
+                    )
+
+                if isHovered {
+                    // Glassy overlay with action buttons
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Material.ultraThin)
+                        .frame(width: width, height: thumbHeight)
+
+                    HStack(spacing: 16) {
+                        Button(action: onClose) {
+                            Image(systemName: "xmark.circle.fill")
+                                .resizable()
+                                .frame(width: 24, height: 24)
+                                .foregroundColor(.white)
+                        }
+                        .buttonStyle(.plain)
+
+                        Button(action: onMinimize) {
+                            Image(systemName: "minus.circle.fill")
+                                .resizable()
+                                .frame(width: 24, height: 24)
+                                .foregroundColor(.white)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .contentShape(Rectangle())
+            .onHover { hovering in
+                isHovered = hovering
+            }
+            .onTapGesture {
+                onRaise()
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityLabel("\(thumb.title), window of \(appName). Click to bring to front.")
+
+            Text(thumb.title)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+                .frame(width: width, alignment: .center)
+        }
+        .frame(width: width)
+    }
 }

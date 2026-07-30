@@ -1,0 +1,35 @@
+name: Latest Release
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: write
+
+jobs:
+  latest-release:
+    name: Build & publish latest release
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build release bundle
+        run: ./build.sh
+
+      - name: Package (.zip + .dmg)
+        run: ./package.sh
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Delete the existing 'latest' release and its tag if they exist
+          gh release delete latest --cleanup-tag -y || true
+
+          # Create a new 'latest' release
+          gh release create "latest" \
+            dist/*.zip dist/*.dmg \
+            --title "Latest Build" \
+            --notes "Continuous build from the main branch." \
+            --prerelease
