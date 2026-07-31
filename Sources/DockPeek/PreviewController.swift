@@ -254,26 +254,14 @@ final class PreviewController {
     private func raise(_ thumb: WindowThumbnail) {
         hide()
         onDismiss?()
-        guard let info = (CGWindowListCopyWindowInfo([.optionIncludingWindow], thumb.id)
-                            as? [[String: Any]])?.first,
-              let ownerPID = info[kCGWindowOwnerPID as String] as? pid_t else { return }
+        guard let (axWindows, matched) = resolveAXWindow(for: thumb),
+              let ownerPID = (CGWindowListCopyWindowInfo([.optionIncludingWindow], thumb.id) as? [[String: Any]])?.first?[kCGWindowOwnerPID as String] as? pid_t else { return }
 
         NSRunningApplication(processIdentifier: ownerPID)?.activate(options: [.activateAllWindows])
 
-        let appElement = AXUIElementCreateApplication(ownerPID)
-        var windowsRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef) == .success,
-              let axWindows = windowsRef as? [AXUIElement] else { return }
-
-        for axWindow in axWindows {
-            var titleRef: CFTypeRef?
-            AXUIElementCopyAttributeValue(axWindow, kAXTitleAttribute as CFString, &titleRef)
-            if let axTitle = titleRef as? String, axTitle == thumb.title {
-                AXUIElementPerformAction(axWindow, kAXRaiseAction as CFString)
-                return
-            }
-        }
-        if let first = axWindows.first {
+        if let matched = matched {
+            AXUIElementPerformAction(matched, kAXRaiseAction as CFString)
+        } else if let first = axWindows.first {
             AXUIElementPerformAction(first, kAXRaiseAction as CFString)
         }
     }
@@ -283,38 +271,37 @@ final class PreviewController {
     private func performWindowAction(thumb: WindowThumbnail, actionAttribute: CFString) {
         hide()
         onDismiss?()
-        guard let info = (CGWindowListCopyWindowInfo([.optionIncludingWindow], thumb.id)
-                            as? [[String: Any]])?.first,
-              let ownerPID = info[kCGWindowOwnerPID as String] as? pid_t else { return }
+
+        // Only act on a uniquely identified matched window, never fallback to first for destructive actions.
+        guard let (_, matched) = resolveAXWindow(for: thumb), let axWindow = matched else { return }
+
+        var buttonRef: CFTypeRef?
+        if AXUIElementCopyAttributeValue(axWindow, actionAttribute, &buttonRef) == .success,
+           let buttonVal = buttonRef, CFGetTypeID(buttonVal) == AXUIElementGetTypeID() {
+            let button = buttonVal as! AXUIElement
+            AXUIElementPerformAction(button, kAXPressAction as CFString)
+        }
+    }
+
+    // MARK: AX Helper
+
+    private func resolveAXWindow(for thumb: WindowThumbnail) -> (axWindows: [AXUIElement], matched: AXUIElement?)? {
+        guard let info = (CGWindowListCopyWindowInfo([.optionIncludingWindow], thumb.id) as? [[String: Any]])?.first,
+              let ownerPID = info[kCGWindowOwnerPID as String] as? pid_t else { return nil }
 
         let appElement = AXUIElementCreateApplication(ownerPID)
         var windowsRef: CFTypeRef?
         guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef) == .success,
-              let axWindows = windowsRef as? [AXUIElement] else { return }
+              let axWindows = windowsRef as? [AXUIElement] else { return nil }
 
         for axWindow in axWindows {
             var titleRef: CFTypeRef?
             AXUIElementCopyAttributeValue(axWindow, kAXTitleAttribute as CFString, &titleRef)
             if let axTitle = titleRef as? String, axTitle == thumb.title {
-                var buttonRef: CFTypeRef?
-                if AXUIElementCopyAttributeValue(axWindow, actionAttribute, &buttonRef) == .success,
-                   let buttonVal = buttonRef, CFGetTypeID(buttonVal) == AXUIElementGetTypeID() {
-                    let button = buttonVal as! AXUIElement
-                    AXUIElementPerformAction(button, kAXPressAction as CFString)
-                }
-                return
+                return (axWindows, axWindow)
             }
         }
-
-        // Fallback to first if not matched by title
-        if let first = axWindows.first {
-            var buttonRef: CFTypeRef?
-            if AXUIElementCopyAttributeValue(first, actionAttribute, &buttonRef) == .success,
-               let buttonVal = buttonRef, CFGetTypeID(buttonVal) == AXUIElementGetTypeID() {
-                let button = buttonVal as! AXUIElement
-                AXUIElementPerformAction(button, kAXPressAction as CFString)
-            }
-        }
+        return (axWindows, nil)
     }
 }
 
@@ -451,6 +438,8 @@ struct ThumbCard: View {
             .accessibilityElement(children: .ignore)
             .accessibilityAddTraits(.isButton)
             .accessibilityLabel("\(thumb.title), window of \(appName). Click to bring to front.")
+            .accessibilityAction(named: "Close") { onClose() }
+            .accessibilityAction(named: "Minimize") { onMinimize() }
 
             Text(thumb.title)
                 .font(.system(size: 11, weight: .medium))
